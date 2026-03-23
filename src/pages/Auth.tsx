@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export function Auth() {
+  const navigate = useNavigate()
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,9 +21,11 @@ export function Auth() {
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
+      else navigate('/')
     } else {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setError(error.message)
+      else navigate('/')
     }
 
     setLoading(false)
@@ -32,7 +36,6 @@ export function Auth() {
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">Consistency</h1>
-          <p className="text-muted-foreground">Track your habits, build your streaks</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
