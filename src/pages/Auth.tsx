@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export function Auth() {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -15,31 +16,15 @@ export function Auth() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    })
-
-    if (error) {
-      setError(error.message)
+    if (mode === 'signin') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError(error.message)
     } else {
-      setSent(true)
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) setError(error.message)
     }
-    setLoading(false)
-  }
 
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="w-full max-w-sm text-center space-y-4">
-          <div className="text-4xl">📬</div>
-          <h1 className="text-2xl font-bold">Check your email</h1>
-          <p className="text-muted-foreground">
-            We sent a magic link to <strong>{email}</strong>
-          </p>
-        </div>
-      </div>
-    )
+    setLoading(false)
   }
 
   return (
@@ -64,14 +49,38 @@ export function Auth() {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder={mode === 'signup' ? 'Choose a password' : 'Your password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </div>
+
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Sending...' : 'Login'}
+            {loading ? '...' : mode === 'signin' ? 'Sign in' : 'Create account'}
           </Button>
         </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+          <button
+            type="button"
+            onClick={() => { setMode(m => m === 'signin' ? 'signup' : 'signin'); setError(null) }}
+            className="text-primary underline underline-offset-2"
+          >
+            {mode === 'signin' ? 'Sign up' : 'Sign in'}
+          </button>
+        </p>
       </div>
     </div>
   )
