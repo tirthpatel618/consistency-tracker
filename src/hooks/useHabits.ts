@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/hooks/use-toast'
 import type { Habit } from '@/types'
 
 export function useHabits() {
@@ -13,7 +14,9 @@ export function useHabits() {
       .eq('archived', false)
       .order('sort_order', { ascending: true })
 
-    if (!error && data) {
+    if (error) {
+      toast({ title: 'Failed to load habits', variant: 'destructive', duration: 3000 })
+    } else if (data) {
       setHabits(data as Habit[])
     }
     setLoading(false)
@@ -33,7 +36,9 @@ export function useHabits() {
       .select()
       .single()
 
-    if (!error && data) {
+    if (error) {
+      toast({ title: 'Failed to add habit', variant: 'destructive', duration: 3000 })
+    } else if (data) {
       setHabits(prev => [...prev, data as Habit].sort((a, b) => a.sort_order - b.sort_order))
     }
   }, [])
@@ -46,25 +51,38 @@ export function useHabits() {
       .select()
       .single()
 
-    if (!error && data) {
+    if (error) {
+      toast({ title: 'Failed to update habit', variant: 'destructive', duration: 3000 })
+    } else if (data) {
       setHabits(prev => prev.map(h => h.id === id ? data as Habit : h))
     }
   }, [])
 
   const archiveHabit = useCallback(async (id: string) => {
-    await supabase.from('habits').update({ archived: true }).eq('id', id)
-    setHabits(prev => prev.filter(h => h.id !== id))
+    const { error } = await supabase.from('habits').update({ archived: true }).eq('id', id)
+    if (error) {
+      toast({ title: 'Failed to archive habit', variant: 'destructive', duration: 3000 })
+    } else {
+      setHabits(prev => prev.filter(h => h.id !== id))
+    }
   }, [])
 
   const deleteHabit = useCallback(async (id: string) => {
-    await supabase.from('habits').delete().eq('id', id)
-    setHabits(prev => prev.filter(h => h.id !== id))
+    const { error } = await supabase.from('habits').delete().eq('id', id)
+    if (error) {
+      toast({ title: 'Failed to delete habit', variant: 'destructive', duration: 3000 })
+    } else {
+      setHabits(prev => prev.filter(h => h.id !== id))
+    }
   }, [])
 
   const reorderHabits = useCallback(async (reordered: Habit[]) => {
     setHabits(reordered)
     const updates = reordered.map((h, i) => ({ id: h.id, sort_order: i, user_id: h.user_id }))
-    await supabase.from('habits').upsert(updates)
+    const { error } = await supabase.from('habits').upsert(updates)
+    if (error) {
+      toast({ title: 'Failed to save order', variant: 'destructive', duration: 3000 })
+    }
   }, [])
 
   return { habits, loading, addHabit, updateHabit, archiveHabit, deleteHabit, reorderHabits, refetch: fetchHabits }

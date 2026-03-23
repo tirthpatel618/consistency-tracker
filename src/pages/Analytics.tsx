@@ -1,20 +1,31 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
 import { StatsCard } from '@/components/analytics/StatsCard'
 import { HabitDetail } from '@/components/analytics/HabitDetail'
+import { DayDetailSheet } from '@/components/analytics/DayDetailSheet'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { useHabits } from '@/hooks/useHabits'
 import { useCompletions } from '@/hooks/useCompletions'
 import { calcStreak, calcConsistency } from '@/lib/habitUtils'
+import { getTagStyle, formatTag } from '@/lib/tagUtils'
+import { toDateString } from '@/lib/dateUtils'
 import type { Habit } from '@/types'
 
 export function Analytics() {
   const { habits, loading: habitsLoading } = useHabits()
-  const { completions, loading: completionsLoading } = useCompletions()
+
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date()
+    const start = new Date(end)
+    start.setDate(start.getDate() - 400)
+    return { startDate: toDateString(start), endDate: toDateString(end) }
+  }, [])
+
+  const { completions, loading: completionsLoading } = useCompletions(startDate, endDate)
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null)
   const [activeTag, setActiveTag] = useState('All')
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   const loading = habitsLoading || completionsLoading
 
@@ -23,14 +34,18 @@ export function Analytics() {
   const overallConsistency = habits.length > 0
     ? Math.round(habits.reduce((sum, h) => sum + calcConsistency(h, completions), 0) / habits.length)
     : 0
-  const totalCompletions = completions.length
+  const activeStreaks = habits.filter(h => calcStreak(h, completions) > 0).length
 
   // Unique tags
   const allTags = ['All', ...Array.from(new Set(habits.flatMap(h => h.tags)))]
 
-  const filteredHabits = activeTag === 'All'
-    ? habits
-    : habits.filter(h => h.tags.includes(activeTag))
+  const FREQ_ORDER: Record<string, number> = { daily: 0, weekly: 1, monthly: 2 }
+  const sortedHabits = [...habits].sort((a, b) => {
+    const fd = FREQ_ORDER[a.freq_type] - FREQ_ORDER[b.freq_type]
+    return fd !== 0 ? fd : a.sort_order - b.sort_order
+  })
+
+  const filteredHabits = (activeTag === 'All' ? sortedHabits : sortedHabits.filter(h => h.tags.includes(activeTag)))
 
   return (
     <div className="min-h-screen pb-32">
@@ -52,8 +67,8 @@ export function Analytics() {
             {/* Global stats */}
             <div className="flex gap-3">
               <StatsCard label="Best streak" value={highestStreak} subtitle="periods" />
-              <StatsCard label="Consistency" value={`${overallConsistency}%`} subtitle="30 days avg" />
-              <StatsCard label="Completions" value={totalCompletions} subtitle="all time" />
+              <StatsCard label="Consistency" value={`${overallConsistency}%`} subtitle="all time avg" />
+              <StatsCard label="Active streaks" value={activeStreaks} subtitle={`of ${habits.length} habits`} />
             </div>
 
             {/* Tag filter */}
@@ -66,7 +81,7 @@ export function Analytics() {
                       value={tag}
                       className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                     >
-                      {tag}
+                      {tag === 'All' ? 'All' : formatTag(tag)}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -92,9 +107,17 @@ export function Analytics() {
                         <div className="space-y-1 flex-1 min-w-0">
                           <p className="font-medium truncate">{habit.name}</p>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <Badge variant="secondary" className="text-xs">{habit.freq_type}</Badge>
+                            <span className="inline-flex items-center rounded-full border px-1.5 py-0 text-xs font-semibold bg-secondary text-secondary-foreground border-transparent">
+                              {habit.freq_type}
+                            </span>
                             {habit.tags.map(t => (
-                              <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                              <span
+                                key={t}
+                                className="inline-flex items-center rounded-full px-1.5 py-0 text-xs font-semibold"
+                                style={getTagStyle(t)}
+                              >
+                                {formatTag(t)}
+                              </span>
                             ))}
                           </div>
                         </div>
@@ -118,6 +141,14 @@ export function Analytics() {
         habit={selectedHabit}
         completions={completions}
         onClose={() => setSelectedHabit(null)}
+        onDayClick={date => { setSelectedHabit(null); setSelectedDay(date) }}
+      />
+
+      <DayDetailSheet
+        date={selectedDay}
+        habits={habits}
+        completions={completions}
+        onClose={() => setSelectedDay(null)}
       />
 
       <BottomNav />

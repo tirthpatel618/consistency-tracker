@@ -8,3 +8,4 @@ dist/
 dist-ssr/
 *.log
 .agents/
+.DS_Store

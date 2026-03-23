@@ -45,6 +45,23 @@ export function getCurrentPeriodKey(freqType: 'daily' | 'weekly' | 'monthly', re
   return getMonthKey(now)
 }
 
+/**
+ * Convert an ISO week key (e.g. "2026-W12") to a readable label like "Mar 16 – Mar 22"
+ */
+export function formatISOWeekLabel(isoWeek: string): string {
+  const [yearStr, weekStr] = isoWeek.split('-W')
+  const year = Number(yearStr)
+  const week = Number(weekStr)
+  // ISO week 1 contains the first Thursday of the year; Monday of week 1:
+  const jan4 = new Date(year, 0, 4) // Jan 4 is always in week 1
+  const monday = new Date(jan4)
+  monday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (week - 1) * 7)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return `${fmt(monday)} – ${fmt(sunday)}`
+}
+
 /** Returns date strings for the past N days (local time) */
 export function getPastNDays(n: number): string[] {
   const dates: string[] = []

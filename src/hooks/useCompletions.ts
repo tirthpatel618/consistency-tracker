@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/hooks/use-toast'
 import type { Completion } from '@/types'
 
 export function useCompletions(startDate?: string, endDate?: string) {
@@ -8,13 +9,13 @@ export function useCompletions(startDate?: string, endDate?: string) {
 
   const fetchCompletions = useCallback(async () => {
     let query = supabase.from('completions').select('*')
-
     if (startDate) query = query.gte('completed_date', startDate)
     if (endDate) query = query.lte('completed_date', endDate)
 
     const { data, error } = await query.order('completed_date', { ascending: false })
-
-    if (!error && data) {
+    if (error) {
+      toast({ title: 'Failed to load completions', variant: 'destructive', duration: 3000 })
+    } else if (data) {
       setCompletions(data as Completion[])
     }
     setLoading(false)
@@ -34,18 +35,27 @@ export function useCompletions(startDate?: string, endDate?: string) {
       .select()
       .single()
 
-    if (!error && data) {
+    if (error) {
+      toast({ title: 'Failed to save completion', variant: 'destructive', duration: 3000 })
+    } else if (data) {
       setCompletions(prev => [data as Completion, ...prev])
     }
   }, [])
 
   const removeCompletion = useCallback(async (habitId: string, date: string) => {
-    // Find the completion to delete
-    const toDelete = completions.find(c => c.habit_id === habitId && c.completed_date === date)
+    // Sort by created_at desc to always remove the most recently added completion for this date
+    const matches = completions
+      .filter(c => c.habit_id === habitId && c.completed_date === date)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    const toDelete = matches[0]
     if (!toDelete) return
 
-    await supabase.from('completions').delete().eq('id', toDelete.id)
-    setCompletions(prev => prev.filter(c => c.id !== toDelete.id))
+    const { error } = await supabase.from('completions').delete().eq('id', toDelete.id)
+    if (error) {
+      toast({ title: 'Failed to remove completion', variant: 'destructive', duration: 3000 })
+    } else {
+      setCompletions(prev => prev.filter(c => c.id !== toDelete.id))
+    }
   }, [completions])
 
   return { completions, loading, addCompletion, removeCompletion, refetch: fetchCompletions }

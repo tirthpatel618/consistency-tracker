@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { getTagStyle, formatTag } from '@/lib/tagUtils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -175,9 +176,13 @@ export function Settings() {
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Tags</h2>
               <div className="flex flex-wrap gap-2">
                 {allTags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-sm px-3 py-1">
-                    {tag}
-                  </Badge>
+                  <span
+                    key={tag}
+                    className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold"
+                    style={getTagStyle(tag)}
+                  >
+                    {formatTag(tag)}
+                  </span>
                 ))}
               </div>
             </section>
@@ -230,6 +235,7 @@ export function Settings() {
             setEditingHabit(null)
           }}
           initialData={editingHabit}
+          allTags={Array.from(new Set(allHabits.flatMap(h => h.tags)))}
         />
       )}
 

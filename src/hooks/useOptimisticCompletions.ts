@@ -33,21 +33,21 @@ export function useOptimisticCompletions(startDate?: string, endDate?: string) {
     const action = currentlyDone ? 'removing' : 'adding'
 
     const timerId = setTimeout(async () => {
-      const next = new Map(pendingRef.current)
-      next.delete(key)
-      setPending(next)
-
       if (action === 'adding') {
         await addCompletion(habitId, date, isRetroactive)
       } else {
         await removeCompletion(habitId, date)
       }
-    }, 5000)
+      // Clear pending only after DB confirms — prevents the brief
+      // flicker where pending is gone but completions isn't updated yet
+      const next = new Map(pendingRef.current)
+      next.delete(key)
+      setPending(next)
+    }, 2000)
 
     const { dismiss } = toast({
-      title: action === 'adding' ? 'Habit completed!' : 'Completion removed',
-      description: 'Tap undo to cancel',
-      duration: 5500,
+      title: action === 'adding' ? 'Marked done' : 'Unmarked',
+      duration: 2500,
       action: createElement(ToastAction, {
         altText: 'Undo',
         onClick: () => {

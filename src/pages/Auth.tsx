@@ -69,7 +69,7 @@ export function Auth() {
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Sending...' : 'Send magic link'}
+            {loading ? 'Sending...' : 'Login'}
           </Button>
         </form>
       </div>
