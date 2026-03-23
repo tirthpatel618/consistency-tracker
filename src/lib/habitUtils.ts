@@ -74,7 +74,7 @@ export function calcStreak(habit: Habit, completions: Completion[], resetHour = 
  * Window start = max(created_at, 30 days ago).
  * Includes the current open period.
  */
-export function calcConsistency(habit: Habit, completions: Completion[], resetHour = 0): number {
+export function calcConsistency(habit: Habit, completions: Completion[]): number {
   const habitCompletions = completions.filter(c => c.habit_id === habit.id)
 
   const periodMap = new Map<string, number>()
