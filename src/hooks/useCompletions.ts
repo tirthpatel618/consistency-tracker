@@ -26,12 +26,13 @@ export function useCompletions(startDate?: string, endDate?: string) {
   }, [fetchCompletions])
 
   const addCompletion = useCallback(async (habitId: string, date: string, isRetroactive = false) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    // getSession() reads from localStorage — no network call
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return
 
     const { data, error } = await supabase
       .from('completions')
-      .insert({ habit_id: habitId, user_id: user.id, completed_date: date, is_retroactive: isRetroactive })
+      .insert({ habit_id: habitId, user_id: session.user.id, completed_date: date, is_retroactive: isRetroactive })
       .select()
       .single()
 

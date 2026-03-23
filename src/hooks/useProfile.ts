@@ -2,31 +2,36 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types'
 
+// Module-level cache — persists across page navigations within the same session
+let cachedProfile: Profile | null = null
+
 export function useProfile() {
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<Profile | null>(cachedProfile)
+  const [loading, setLoading] = useState(cachedProfile === null)
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
+      // getSession() reads from localStorage — no network call
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { setLoading(false); return }
 
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single()
 
       if (error || !data) {
-        // Upsert profile if it doesn't exist
         const { data: upserted } = await supabase
           .from('profiles')
-          .upsert({ id: user.id, day_reset_hour: 0 })
+          .upsert({ id: session.user.id, day_reset_hour: 0 })
           .select()
           .single()
-        setProfile(upserted)
+        cachedProfile = upserted as Profile
+        setProfile(cachedProfile)
       } else {
-        setProfile(data as Profile)
+        cachedProfile = data as Profile
+        setProfile(cachedProfile)
       }
       setLoading(false)
     }
@@ -34,17 +39,20 @@ export function useProfile() {
   }, [])
 
   const updateResetHour = useCallback(async (hour: number) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return
 
     const { data } = await supabase
       .from('profiles')
       .update({ day_reset_hour: hour })
-      .eq('id', user.id)
+      .eq('id', session.user.id)
       .select()
       .single()
 
-    if (data) setProfile(data as Profile)
+    if (data) {
+      cachedProfile = data as Profile
+      setProfile(cachedProfile)
+    }
   }, [])
 
   return { profile, loading, updateResetHour }
